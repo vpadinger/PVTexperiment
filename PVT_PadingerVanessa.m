@@ -1,4 +1,4 @@
-% Psychomotor Vigilance Task (PVT)
+%Psychomotor Vigilance Task (PVT)
 % 2 Minuten Version für UE Scientific Programming 
 % Replikation inspiriert von Dinges & Powell (1985) & dem SloryMum Projekt
 % des Schlaflabors Salzburg
@@ -6,40 +6,34 @@
 % Autor: Vanessa Padinger
 % ------------------------------------------------------------
 
-clear all; close all; clc;
+clear all; close all; clc;        % Workspace leeren, Fenster schließen, Konsole leeren
 
 %% ----------------- Parameter -----------------
-% experimentDuration = Gesamtdauer des Experiments
-% minISI / maxISI = zufällige Wartezeit zwischen Stimuli (Inter-Stimulus-Intervall)
-% stopKey = Leertaste um auf den Stimulus zu reagieren 
-% exitKey = Escape Taste um das Experiment frühzeitig zu beenden 
+experimentDuration = 120;        % Gesamtdauer des Experiments in Sekunden (2 Minuten)
+minISI = 2;                      % minimale Wartezeit zwischen Stimuli in Sekunden
+maxISI = 10;                     % maximale Wartezeit zwischen Stimuli in Sekunden 
 
-experimentDuration = 120; % 2 Minuten in Sekunden
-minISI = 2;               % minimale Wartezeit (Sekunden)
-maxISI = 10;              % maximale Wartezeit (Sekunden)
+stopKey = KbName('space');       % Reaktionstaste = Leertaste
+exitKey = KbName('ESCAPE');      % Abbruchtaste = ESC
 
-stopKey = KbName('space');
-exitKey = KbName('ESCAPE');
-
-textColor = [455 455 455];
-bgColor   = [0 0 0];
+textColor = [455 455 455];       % Textfarbe (weiß)
+bgColor   = [0 0 0];             % Hintergrundfarbe (schwarz)
 
 %% ----------------- Psychtoolbox Setup ----------------
 
-PsychDefaultSetup(2);
-Screen('Preference', 'SkipSyncTests', 1);
+PsychDefaultSetup(2);            % Standard-Psychtoolbox-Einstellungen
+Screen('Preference', 'SkipSyncTests', 1);  % Sync-Tests deaktivieren 
 
-screens = Screen('Screens');
-screenNumber = max(screens);
+screens = Screen('Screens');     % verfügbare Bildschirme abfragen
+screenNumber = max(screens);     % größten Bildschirm auswählen
 
-[win, winRect] = PsychImaging('OpenWindow', screenNumber, bgColor);
-[xCenter, yCenter] = RectCenter(winRect);
+[win, winRect] = PsychImaging('OpenWindow', screenNumber, bgColor); % Fenster öffnen
+[xCenter, yCenter] = RectCenter(winRect); % Mittelpunkt berechnen
 
-Screen('TextSize', win, 40);
-HideCursor;
+Screen('TextSize', win, 40);     % Standardschriftgröße
+HideCursor;                      % Mauszeiger ausblenden
 
 %% ----------------- Instruktion für VP -----------------
-% Instruktionsbildschirm
 
 instructionText = [ ...
     'Psychomotor Vigilance Task (PVT)\n\n' ...
@@ -50,141 +44,137 @@ instructionText = [ ...
     '  sobald der Zähler startet.\n\n' ...
     'Versuchen Sie aufmerksam zu bleiben und jederzeit bereit zu reagieren.\n\n' ...
     'Drücken Sie die LEERTASTE, um das Experiment zu starten.' ...
-];
+];                                % Instruktionstext für Versuchsperson
 
-DrawFormattedText(win, instructionText, 'center', 'center', textColor);
-Screen('Flip', win);
+DrawFormattedText(win, instructionText, 'center', 'center', textColor); % Text einblenden
+Screen('Flip', win);             % Instruktion wird angezeigt
 
-KbReleaseWait;
-KbWait([], 2);
+KbReleaseWait;                   % alte Tastendrücke abwarten
+KbWait([], 2);                   % Start bei neuer Taste -> Experiment startet 
 
 %% ----------------- Experiment -----------------
-% Hauptschleife des Experiments
-% Steuert Timing, Stimuluspräsentation, Reaktionserfassung
-% und Datenspeicherung
 
-startExpTime = GetSecs;
-trial = 0;
-results = [];
+startExpTime = GetSecs;          % Startzeit des Experiments
+trial = 0;                       % Trial-Zähler für Ergebnisse 
+results = [];                    % Datenstruktur für Ergebnisse 
 
-% Kategorisierung der Antworten (Vigilanz-Metriken)
-sleepAttack = 0;   % >30s keine Reaktion
-lapse = 0;         % >5s
-good = 0;          % 150–500ms
-tooFast = 0;       % <100ms
-excessiveClick = 0;% Klick ohne Stimulus
+% Klassifikation der Reaktionszeiten 
 
-while (GetSecs - startExpTime) < experimentDuration
-    trial = trial + 1;
-    
-    %% ----------------- Random ISI -----------------
-    % Zufälliges Inter-Stimulus-Intervall (2–10 Sekunden), damit die
-    % Stimuli unvorhersehbar sind
-    
-    isi = minISI + (maxISI - minISI) * rand;
-    
-    %% ----------------- Fixationspunkt (gelber Kreis) -----------------
-    % Gelber Punkt in der Mitte
-    
-    Screen('FillRect', win, bgColor);
-    dotSize = 85; 
-    Screen('FillOval', win, [455 455 0], ...
-        CenterRectOnPoint([0 0 dotSize dotSize], xCenter, yCenter));
-    Screen('Flip', win);
-    
-    % Wartezeit (minus 1 Sekunde Leerlaufphase nach Response)
-    WaitSecs(isi - 1);
+sleepAttack = 0;                 % >30s keine Reaktion - Eingeschlafen 
+lapse = 0;                       % >5s Reaktionszeit - Aufmerksamkeitsausfall
+good = 0;                        % 150–500ms - gute Vigilanz
+tooFast = 0;                     % <100ms - Antizipation / Impulsivität
+excessiveClick = 0;              % Klick ohne Stimulus
 
-    
-    %% ----------------- Start Counter (Stimulus) -----------------
-    % Start des eigentlichen Stimulus
-    % Fortlaufender Zahlen-Counter
-    % RT wird relativ zu diesem Zeitpunkt gemessen
+% Parameter für Fixationskreuz
+crossSize = 40;                  % Länge der Kreuzarme
+crossWidth = 4;                  % Linienstärke
 
-
-    stimOnset = GetSecs;
-    response = false;
-    rt = NaN;
-    flagStimulus = true;
+while (GetSecs - startExpTime) < experimentDuration   % 2-Minuten-Schleife
+    trial = trial + 1;           % Trial erhöhen
     
-    while ~response
+    %% Random ISI
+    isi = minISI + (maxISI - minISI) * rand;  % Zufälliges Intervall zwischen 2 und 10 Sekunden 
+    
+    %% Fixationskreuz
+    Screen('FillRect', win, bgColor);         % Bildschirm schwarz (Reset-Zustand)
+
+    % horizontale Linie des Fixationskreuzes
+    Screen('DrawLine', win, [355 355 0], ...
+        xCenter - crossSize, yCenter, ...
+        xCenter + crossSize, yCenter, crossWidth);
+
+    % vertikale Linie des Fixationskreuzes
+    Screen('DrawLine', win, [355 355 0], ...
+        xCenter, yCenter - crossSize, ...
+        xCenter, yCenter + crossSize, crossWidth);
+
+    Screen('Flip', win);                      % Fixationskreuz anzeigen
+    
+    WaitSecs(isi - 1);                        % Wartezeit (Inter-Stimulus-Intervall)
+
+    %% Stimulus (Counter)
+    stimOnset = GetSecs;                      % Stimulus-Startzeit
+    response = false;                        % Reaktionsmarker - Timer läuft bis Leertaste gedrückt wird
+    rt = NaN;                                % Noch keine Reaktionszeit
+    
+    while ~response                          % Stimulusschleife läuft solange keine Reaktion kommt
+        elapsed = (GetSecs - stimOnset) * 1000; % Zeit in ms seit Stimulusbeginn
+        counterText = sprintf('%.0f', elapsed); % Hochzählender Timer (visueller Stimulus)
         
-        % Fortlaufende Zahl (Counter)
-        elapsed = (GetSecs - stimOnset) * 1000; % interne ms-Berechnung
-        counterText = sprintf('%.0f', elapsed); % NUR ZAHL, kein \"ms\"
-        
-          % Darstellung des Counters
-	Screen('TextSize', win, 65);   
-	DrawFormattedText(win, counterText, 'center', 'center', [455 455 0]);
-	Screen('Flip', win);
-	Screen('TextSize', win, 40);  
+        Screen('TextSize', win, 65);          % große Schrift
+        DrawFormattedText(win, counterText, 'center', 'center', [455 455 0]);
+        Screen('Flip', win);                  % Counter anzeigen
+        Screen('TextSize', win, 40);          % Schrift zurücksetzen
 
-        % Tastenerfassung
-        [keyIsDown, ~, keyCode] = KbCheck;
+        [keyIsDown, ~, keyCode] = KbCheck;    % Tastenerfassung
         if keyIsDown
-            if keyCode(stopKey)
-                rt = GetSecs - stimOnset;
-                response = true;
-            elseif keyCode(exitKey)
-                sca; ShowCursor; return;
+            if keyCode(stopKey)               % SPACE gedrückt - gültige Reaktion
+                rt = GetSecs - stimOnset;     % Reaktionszeit berechnen
+                response = true;              % Trial beenden
+            elseif keyCode(exitKey)           % ESC -> Abbruch
+                sca; ShowCursor; return;      % Screen schließen, Maus anzeigen, Skript beenden 
             else
-                excessiveClick = excessiveClick + 1; % Klick ohne Stimulus
+                excessiveClick = excessiveClick + 1; % falsche Taste (Impulsivität)
             end
         end
         
-        % Sleep-Attack Detection (>30s keine Reaktion)
-        if (GetSecs - stimOnset) > 30
-            sleepAttack = sleepAttack + 1;
-            response = true;
-            rt = NaN;
+        if (GetSecs - stimOnset) > 30          % >30s keine Reaktion
+            sleepAttack = sleepAttack + 1;    % Sleep Attack (Mikroschlaf)
+            response = true;                  % Trial beenden
+            rt = NaN;                         % keine RT
         end
     end
-    
-    %% ----------------- Klassifikation -----------------
-    % Einteilung der Reaktion in Vigilanz-Kategorien
-    
+   
+    %% Klassifikation für die Ergebnisse
     if ~isnan(rt)
-        rt_ms = rt*1000;
+        rt_ms = rt*1000;                      % Umrechnung in ms
         if rt_ms < 100
-            tooFast = tooFast + 1;
+            tooFast = tooFast + 1;            % antizipatorische Reaktion
         elseif rt_ms <= 500
-            good = good + 1;
+            good = good + 1;                  % gute Vigilanz
         elseif rt_ms > 5000
-            lapse = lapse + 1;
+            lapse = lapse + 1;                % Lapse (Aufmerksamkeitsausfall)
         else
-            lapse = lapse + 1;
+            lapse = lapse + 1;                % verlangsamte Reaktion
         end
     end
 
-% VP sieht die Reaktionszeit für ca. 1 Sekunde
-if ~isnan(rt)
-    feedbackNumber = sprintf('%.0f', rt*1000);  
-else
-    feedbackNumber = '---'; % falls keine Reaktion
-end
+    %% Feedback
+    if ~isnan(rt)
+        feedbackNumber = sprintf('%.0f', rt*1000); % RT in ms anzeigen
+    else
+        feedbackNumber = '---';               % keine Reaktion
+    end
 
-Screen('TextSize', win, 65);   
-DrawFormattedText(win, feedbackNumber, 'center', 'center', [455 455 0]);
-Screen('Flip', win);
-WaitSecs(1);   % Anzeige ca. 1 Sekunde
-Screen('TextSize', win, 40);   
+    Screen('TextSize', win, 65);
+    DrawFormattedText(win, feedbackNumber, 'center', 'center', [455 455 0]);
+    Screen('Flip', win);
+    WaitSecs(1);                              % 1 Sekunde Feedback
+    Screen('TextSize', win, 40);
 
-% Danach zurück zum Fixationspunkt
-Screen('FillRect', win, bgColor);
-Screen('FillOval', win, [455 455 0], ...
-    CenterRectOnPoint([0 0 dotSize dotSize], xCenter, yCenter));
-Screen('Flip', win);
+    %% Fixationskreuz (Reset-Zustand für nächsten Trial)
+    Screen('FillRect', win, bgColor);
 
-    %% ----------------- Speichern -----------------
-    % Speichert Trial-Daten
-    
-    results(trial).trial = trial;
-    results(trial).isi = isi;
-    results(trial).rt = rt;
-end
+    % horizontale Linie
+    Screen('DrawLine', win, [455 455 0], ...
+        xCenter - crossSize, yCenter, ...
+        xCenter + crossSize, yCenter, crossWidth);
 
-%% ----------------- Ende -----------------
+    % vertikale Linie
+    Screen('DrawLine', win, [455 455 0], ...
+        xCenter, yCenter - crossSize, ...
+        xCenter, yCenter + crossSize, crossWidth);
 
+    Screen('Flip', win);                      % Fixationskreuz anzeigen
+
+    %% Speichern
+    results(trial).trial = trial;             % Trialnummer
+    results(trial).isi = isi;                 % ISI
+    results(trial).rt = rt;                   % Reaktionszeit
+end % Experiment ist vorbei 
+
+%% Ende
 endText = [ ...
     'Experiment beendet!\n\n' ...
     'Vielen Dank für Ihre Teilnahme :)!\n\n' ...
@@ -192,20 +182,18 @@ endText = [ ...
 
 DrawFormattedText(win, endText, 'center', 'center', textColor);
 Screen('Flip', win);
-WaitSecs(3);
+WaitSecs(3);                                 % Abschiedstext 3 Sekunden sichtbar 
 
-sca;
-ShowCursor;
+sca;                                         % Screen schließen
+ShowCursor;                                  % Maus anzeigen
 
-%% ----------------- Daten speichern -----------------
-
+%% Daten speichern
 save('PVT_results.mat', 'results', ...
      'sleepAttack', 'lapse', 'good', 'tooFast', 'excessiveClick');
 
-%% ----------------- Einfache Auswertung -----------------
-
-RTs = [results.rt];
-RTs = RTs(~isnan(RTs));
+%% Auswertung
+RTs = [results.rt];                           % alle RTs
+RTs = RTs(~isnan(RTs));                       % NaNs entfernen
 
 fprintf('\n===== PVT Auswertung =====\n');
 fprintf('Trials: %d\n', length(results));
