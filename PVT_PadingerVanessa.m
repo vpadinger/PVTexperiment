@@ -74,8 +74,6 @@ good = 0;          % 150–500ms
 tooFast = 0;       % <100ms
 excessiveClick = 0;% Klick ohne Stimulus
 
-flagStimulus = false;
-
 while (GetSecs - startExpTime) < experimentDuration
     trial = trial + 1;
     
