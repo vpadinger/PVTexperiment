@@ -140,8 +140,6 @@ while (GetSecs - startExpTime) < experimentDuration
         end
     end
     
-    flagStimulus = false;
-    
     %% ----------------- Klassifikation -----------------
     % Einteilung der Reaktion in Vigilanz-Kategorien
     
